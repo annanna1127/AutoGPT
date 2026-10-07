@@ -30,10 +30,27 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: 'JSON の形式が正しくありません' });
   }
+  return json_(record_(body));
+}
 
+/**
+ * GET でも記録できるようにする（POST が通らない環境向け）。
+ * 例: .../exec?token=xxx&amount=¥210&merchant=新宿
+ * token がなければ動作確認用の応答だけ返す。
+ */
+function doGet(e) {
+  const params = (e && e.parameter) || {};
+  if (!params.token) {
+    return json_({ ok: true, message: 'Suica 記録 Web アプリは動作しています' });
+  }
+  return json_(record_(params));
+}
+
+/** トークンを確認して「Suica履歴」シートに1行追記する */
+function record_(data) {
   const token = PropertiesService.getScriptProperties().getProperty('TOKEN');
-  if (!token || body.token !== token) {
-    return json_({ ok: false, error: 'トークンが一致しません' });
+  if (!token || data.token !== token) {
+    return { ok: false, error: 'トークンが一致しません' };
   }
 
   const lock = LockService.getScriptLock();
@@ -42,21 +59,16 @@ function doPost(e) {
     const now = new Date();
     getSheet_().appendRow([
       now,
-      parseDate_(body.date) || now,
-      body.merchant || '',
-      parseAmount_(body.amount),
-      body.card || '',
-      String(body.amount || ''),
+      parseDate_(data.date) || now,
+      data.merchant || '',
+      parseAmount_(data.amount),
+      data.card || '',
+      String(data.amount || ''),
     ]);
   } finally {
     lock.releaseLock();
   }
-  return json_({ ok: true });
-}
-
-/** ブラウザで URL を開いたときの動作確認用 */
-function doGet() {
-  return json_({ ok: true, message: 'Suica 記録 Web アプリは動作しています' });
+  return { ok: true };
 }
 
 function getSheet_() {
