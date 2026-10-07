@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>勤怠・位置記録</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============================================================
+       このアプリは「本人が勤務ONにしている間だけ」位置を記録します。
+       隠れて動く機能はありません。OFF にすれば記録は完全に停止します。
+       ============================================================ -->
+  <main class="app" id="app">
+
+    <!-- 記録中であることを常に知らせるバナー（記録中のみ表示） -->
+    <div id="recordingBanner" class="banner hidden" role="status" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span>
+      <span>位置を記録中です — いつでも「勤務終了」で停止できます</span>
+    </div>
+
+    <header class="head">
+      <h1>勤怠・位置記録</h1>
+      <p class="sub">勤務中だけ、本人の操作で位置を記録します</p>
+    </header>
+
+    <!-- 1. 初期設定画面 ------------------------------------------------ -->
+    <section id="setupView" class="card hidden">
+      <h2>初期設定</h2>
+      <p class="note">
+        記録先のスプレッドシート（Google Apps Script のウェブアプリ URL）と、
+        あなたの氏名・ID を設定します。設定はこの端末のブラウザにのみ保存されます。
+      </p>
+      <label>記録先 URL（Apps Script ウェブアプリ）
+        <input id="cfgEndpoint" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec" />
+      </label>
+      <div class="row">
+        <label>従業員ID
+          <input id="cfgWorkerId" type="text" placeholder="emp-001" />
+        </label>
+        <label>氏名
+          <input id="cfgWorkerName" type="text" placeholder="山田 太郎" />
+        </label>
+      </div>
+      <div class="row">
+        <label>記録間隔（秒）
+          <input id="cfgInterval" type="number" min="60" step="30" value="300" />
+        </label>
+        <label class="check">
+          <input id="cfgGeocode" type="checkbox" />
+          住所も記録する（逆ジオコーディング）
+        </label>
+      </div>
+      <button id="saveSetup" class="btn primary">設定を保存</button>
+    </section>
+
+    <!-- 2. 同意画面 ---------------------------------------------------- -->
+    <section id="consentView" class="card hidden">
+      <h2>記録を始める前に（同意）</h2>
+      <ul class="consent-list">
+        <li>記録するのは<strong>「勤務開始」を押してから「勤務終了」を押すまで</strong>の間だけです。</li>
+        <li>その間、約<strong><span id="consentInterval">5</span>分ごと</strong>に現在地（緯度・経度・精度<span id="consentAddr">・住所</span>）を記録します。</li>
+        <li>勤務終了すると記録は<strong>完全に止まります</strong>。OFF の間は一切記録しません。</li>
+        <li>記録中はこの画面の上部に<strong>「記録中」バナー</strong>が表示され、送信した内容も一覧で確認できます。</li>
+        <li>位置情報へのアクセスは、次の画面でブラウザが<strong>あなたの許可</strong>を求めます。許可しなければ記録されません。</li>
+      </ul>
+      <p class="note small">
+        ※ 記録先スプレッドシートの管理・閲覧範囲、保管期間、利用目的については、
+        あなたの勤務先の規程・合意に従って運用してください。
+      </p>
+      <label class="check big">
+        <input id="consentCheck" type="checkbox" />
+        上記を理解し、勤務中の位置記録に同意します
+      </label>
+      <div class="row">
+        <button id="goOnDuty" class="btn primary" disabled>同意して勤務開始</button>
+        <button id="editSetup" class="btn ghost">設定を変更</button>
+      </div>
+    </section>
+
+    <!-- 3. 勤務中画面 -------------------------------------------------- -->
+    <section id="onDutyView" class="card hidden">
+      <div class="status">
+        <div>
+          <div class="status-label">勤務中</div>
+          <div class="status-worker" id="onWorker">—</div>
+        </div>
+        <div class="status-timer" id="elapsed">00:00:00</div>
+      </div>
+
+      <dl class="meta">
+        <div><dt>最後の記録</dt><dd id="lastTime">—</dd></div>
+        <div><dt>現在地</dt><dd id="lastPos">—</dd></div>
+        <div><dt>精度</dt><dd id="lastAcc">—</dd></div>
+        <div><dt>未送信</dt><dd id="pendingCount">0</dd></div>
+      </dl>
+
+      <div class="row">
+        <button id="sendNow" class="btn ghost">今すぐ記録</button>
+        <button id="goOffDuty" class="btn danger">勤務終了</button>
+      </div>
+
+      <h3>送信ログ（この端末に表示しているだけ）</h3>
+      <ul id="log" class="log"></ul>
+    </section>
+
+    <footer class="foot">
+      <button id="resetAll" class="link">設定とログを消去</button>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
