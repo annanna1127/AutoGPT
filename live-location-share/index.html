@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>現在地を共有</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <!-- 共有中であることを常に知らせるバナー -->
+    <div id="banner" class="banner hidden" role="status" aria-live="polite">
+      <span class="dot"></span><span>現在地を共有中 — 「共有を停止」でいつでも止められます</span>
+    </div>
+
+    <header class="head">
+      <h1>現在地を共有</h1>
+      <p class="sub">自分の現在地を、リンクを渡した相手にだけ地図で見せます</p>
+    </header>
+
+    <!-- 設定（初回のみ） -->
+    <section id="setup" class="card hidden">
+      <h2>最初の設定</h2>
+      <p class="note">共有先サーバー（Apps Script の URL）と表示名を設定します。この端末にのみ保存されます。</p>
+      <label>共有先 URL
+        <input id="endpoint" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+      </label>
+      <label>表示名
+        <input id="name" type="text" placeholder="たろう" />
+      </label>
+      <button id="saveSetup" class="btn primary">保存</button>
+    </section>
+
+    <!-- 共有前 -->
+    <section id="idle" class="card hidden">
+      <p class="note">ボタンを押すと位置情報の許可を求められます。許可した時だけ共有が始まります。</p>
+      <label>共有する時間
+        <select id="ttl">
+          <option value="1">1時間</option>
+          <option value="4" selected>4時間</option>
+          <option value="8">8時間</option>
+        </select>
+      </label>
+      <button id="start" class="btn primary big">現在地の共有を開始</button>
+      <button id="editSetup" class="btn ghost">設定を変更</button>
+    </section>
+
+    <!-- 共有中 -->
+    <section id="sharing" class="card hidden">
+      <div class="live">
+        <div><div class="live-label">共有中</div><div id="who" class="live-who">—</div></div>
+        <div class="live-timer" id="elapsed">00:00</div>
+      </div>
+
+      <label>共有リンク（この相手だけが見られます）
+        <div class="linkrow">
+          <input id="link" type="text" readonly />
+          <button id="copy" class="btn">コピー</button>
+        </div>
+      </label>
+
+      <dl class="meta">
+        <div><dt>最終更新</dt><dd id="updated">—</dd></div>
+        <div><dt>精度</dt><dd id="acc">—</dd></div>
+        <div><dt>期限</dt><dd id="expires">—</dd></div>
+      </dl>
+
+      <div class="row">
+        <a id="preview" class="btn ghost" target="_blank" rel="noopener">地図で確認</a>
+        <button id="stop" class="btn danger">共有を停止</button>
+      </div>
+    </section>
+
+    <footer class="foot"><button id="reset" class="link">設定を消去</button></footer>
+  </main>
+  <script src="share.js"></script>
+</body>
+</html>
