@@ -8,7 +8,7 @@
  */
 
 const SHEET_NAME = 'Suica履歴';
-const HEADERS = ['記録日時', '利用日時', '利用先', '金額(円)', 'カード名', '元の金額表記'];
+const HEADERS = ['記録日時', '利用日時', '利用先', '金額(円)', 'カード名', '元の金額表記', '受信データ'];
 
 /** 初回セットアップ: シートを作成し、合言葉トークンを発行してログに表示する */
 function setup() {
@@ -64,6 +64,7 @@ function record_(data) {
       parseAmount_(data.amount),
       data.card || '',
       String(data.amount || ''),
+      rawData_(data),
     ]);
   } finally {
     lock.releaseLock();
@@ -80,8 +81,20 @@ function getSheet_() {
     sheet.setFrozenRows(1);
     sheet.getRange('A:B').setNumberFormat('yyyy/mm/dd hh:mm:ss');
     sheet.getRange('D:D').setNumberFormat('#,##0');
+  } else if (sheet.getRange(1, HEADERS.length).getValue() === '') {
+    // 以前のバージョンで作ったシートに、増えた列の見出しを足す
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   }
   return sheet;
+}
+
+/** 届いた内容をそのまま残す（トークンは除く）。項目が空になるときの原因調査用 */
+function rawData_(data) {
+  const copy = {};
+  Object.keys(data).forEach(function (key) {
+    if (key !== 'token') copy[key] = data[key];
+  });
+  return JSON.stringify(copy);
 }
 
 /** 「¥210」「-210円」「JP¥1,000」などから数値だけを取り出す */
