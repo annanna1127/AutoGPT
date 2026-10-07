@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1f2328; --muted: #6b7280; --line: #e5e7eb;
+    --accent: #0f766e; --accent-weak: #e6f4f2; --expense: #c2410c; --income: #15803d; --danger: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111315; --card: #1b1e21; --text: #e8eaed; --muted: #9aa0a6; --line: #2d3136;
+      --accent: #2dd4bf; --accent-weak: #133430; --expense: #fb923c; --income: #4ade80; --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font-size: 16px; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; }
+  .month { display: flex; align-items: center; gap: 4px; }
+  .month button { background: none; border: none; color: var(--text); font-size: 20px; padding: 4px 10px; }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .totals div span { display: block; font-size: 13px; color: var(--muted); }
+  .totals div b { font-size: 24px; font-variant-numeric: tabular-nums; }
+  .exp { color: var(--expense); } .inc { color: var(--income); }
+  .bigbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .bigbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 18px 8px; border-radius: 14px; border: none; font-size: 16px; font-weight: 700; cursor: pointer;
+    background: var(--accent); color: #fff; }
+  .bigbtn.sub { background: var(--accent-weak); color: var(--accent); }
+  .bigbtn small { font-weight: 400; font-size: 12px; opacity: .85; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.pct { text-align: right; color: var(--muted); width: 52px; font-size: 13px; }
+  .tx { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0;
+    border-bottom: 1px solid var(--line); cursor: pointer; }
+  .tx:last-child { border-bottom: none; }
+  .tx .l { min-width: 0; } .tx .l b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx .l small { color: var(--muted); font-size: 12px; }
+  .tx .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .date-head { font-size: 13px; color: var(--muted); margin: 14px 0 0; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+  input, select, textarea { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { padding: 10px; border: none; background: var(--card); color: var(--text); font-size: 15px; }
+  .seg button.on { background: var(--accent); color: #fff; font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+    color: var(--text); font-size: 14px; }
+  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 16px; font-weight: 700;
+    background: var(--accent); color: #fff; margin-top: 16px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn:disabled { opacity: .5; }
+  nav { position: fixed; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+  nav button { background: none; border: none; color: var(--muted); padding: 10px 0 8px; font-size: 12px; }
+  nav button i { display: block; font-style: normal; font-size: 20px; }
+  nav button.on { color: var(--accent); font-weight: 700; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .notice { background: var(--accent-weak); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 14px; }
+  .notice.warn { background: #fef3c7; color: #78350f; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: var(--bg); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto;
+    border-radius: 18px 18px 0 0; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .sheet h3 { margin: 4px 0 8px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #111; color: #fff;
+    padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 20; max-width: 90vw; }
+  .loading { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.4); display: flex; align-items: center;
+    justify-content: center; color: #fff; font-size: 16px; flex-direction: column; gap: 12px; }
+  .spinner { width: 36px; height: 36px; border: 4px solid rgba(255,255,255,.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .cand { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px 12px; margin-bottom: 10px; }
+  .cand-head { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+  .cand-head button { background: none; border: none; color: var(--danger); font-size: 14px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>かんたん家計簿</h1>
+  <div class="month">
+    <button onclick="shiftMonth(-1)" aria-label="前の月">‹</button>
+    <b id="monthLabel"></b>
+    <button onclick="shiftMonth(1)" aria-label="次の月">›</button>
+  </div>
+</header>
+
+<main>
+  <!-- ホーム -->
+  <section id="tab-home">
+    <div id="apiWarn" class="notice warn hidden">Claude APIキーが未設定のため、写真の自動読み取りが使えません。README の手順で設定してください。</div>
+    <div class="bigbtns">
+      <button class="bigbtn" onclick="pickImage('receipt')">📷 レシートを撮る<small>店舗・金額・科目を自動入力</small></button>
+      <button class="bigbtn sub" onclick="pickImage('screenshot')">🖼 スクショ取込<small>PayPay・Suicaの履歴画面</small></button>
+    </div>
+    <div class="card">
+      <h2>この月の収支</h2>
+      <div class="totals">
+        <div><span>支出</span><b class="exp" id="sumExpense">-</b></div>
+        <div><span>収入</span><b class="inc" id="sumIncome">-</b></div>
+      </div>
+      <p class="muted" id="sumBalance"></p>
+    </div>
+    <div class="card"><h2>勘定科目別の支出</h2><table id="byCategory"></table></div>
+    <div class="card"><h2>支払方法別の支出</h2><table id="byPayment"></table></div>
+    <div class="card"><h2>最近の記録</h2><div id="recent"></div></div>
+  </section>
+
+  <!-- 手入力 -->
+  <section id="tab-add" class="hidden">
+    <div class="card">
+      <h2>手入力</h2>
+      <div id="addForm"></div>
+      <button class="btn" id="addSave" onclick="saveManual()">記録する</button>
+    </div>
+  </section>
+
+  <!-- 履歴 -->
+  <section id="tab-list" class="hidden">
+    <div class="card"><div id="list"></div></div>
+  </section>
+
+  <!-- 連携 -->
+  <section id="tab-link" class="hidden">
+    <div class="card">
+      <h2>クレカ・銀行の利用通知メール（自動）</h2>
+      <p class="muted">Gmail に届く「カード利用のお知らせ」「入出金通知」を1時間ごとに自動で取り込みます。対象のメールはスプレッドシートの「連携設定」シートで設定します。</p>
+      <p class="muted" id="lastGmail"></p>
+      <button class="btn ghost" onclick="runGmail()">今すぐ取り込む</button>
+    </div>
+    <div class="card">
+      <h2>明細CSVの取込</h2>
+      <p class="muted">カード会社・銀行・PayPay アプリなどからダウンロードした明細CSVを、そのまま選ぶだけで取り込めます（列の形式は自動で判別）。</p>
+      <label>明細の名前</label>
+      <input id="csvName" placeholder="例：楽天カード 10月分">
+      <label>支払方法</label>
+      <select id="csvPayment"></select>
+      <button class="btn ghost" onclick="document.getElementById('csvFile').click()">CSVファイルを選ぶ</button>
+      <input type="file" id="csvFile" accept=".csv,text/csv" class="hidden" onchange="onCsv(this)">
+    </div>
+    <div class="card">
+      <h2>PayPay・Suica のコツ</h2>
+      <p class="muted">PayPay残高払いや Suica は利用通知メールが届かないことが多いので、アプリの<b>利用履歴画面をスクショ</b>してホームの「スクショ取込」から読み込むのがいちばん手軽です。複数件が写っていてもまとめて登録できます。チャージは二重計上になるので自動で除外します。</p>
+    </div>
+    <div class="card">
+      <h2>保存先</h2>
+      <p class="muted"><a id="ssLink" target="_blank">📊 スプレッドシートを開く</a></p>
+      <p class="muted"><a id="driveLink" target="_blank">📁 レシート画像フォルダを開く</a></p>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="home" class="on" onclick="showTab('home')"><i>🏠</i>ホーム</button>
+  <button data-tab="add" onclick="showTab('add')"><i>✏️</i>手入力</button>
+  <button data-tab="list" onclick="showTab('list')"><i>📋</i>履歴</button>
+  <button data-tab="link" onclick="showTab('link')"><i>🔗</i>連携</button>
+</nav>
+
+<input type="file" id="imgCamera" accept="image/*" capture="environment" class="hidden" onchange="onImages(this)">
+<input type="file" id="imgPick" accept="image/*" multiple class="hidden" onchange="onImages(this)">
+
+<div id="modal" class="modal hidden" onclick="if (event.target === this) closeModal()"><div class="sheet" id="modalBody"></div></div>
+<div id="loading" class="loading hidden"><div class="spinner"></div><div id="loadingText">読み取り中…</div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+  let INIT = null;
+  let currentYm = '';
+  let imageKind = 'receipt';
+  let txCache = {};
+
+  const yen = n => '¥' + Number(n || 0).toLocaleString('ja-JP');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const $ = id => document.getElementById(id);
+
+  function call(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+    });
+  }
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 3000);
+  }
+  function loading(on, text) {
+    $('loading').classList.toggle('hidden', !on);
+    if (text) $('loadingText').textContent = text;
+  }
+  function fail(e) { loading(false); toast('エラー: ' + (e && e.message ? e.message : e)); }
+
+  // ---------- 初期化 ----------
+  call('getInitData').then(d => {
+    INIT = d;
+    currentYm = d.today.slice(0, 7);
+    $('apiWarn').classList.toggle('hidden', d.hasApiKey);
+    $('ssLink').href = d.spreadsheetUrl;
+    $('driveLink').href = d.driveUrl;
+    $('csvPayment').innerHTML = d.payments.map(p => `<option ${p === 'クレジットカード' ? 'selected' : ''}>${esc(p)}</option>`).join('');
+    $('lastGmail').textContent = d.lastGmailImport ? '最終取込: ' + new Date(d.lastGmailImport).toLocaleString('ja-JP') : 'まだ取り込んでいません';
+    $('addForm').innerHTML = txFormHtml('add', { date: d.today, type: '支出', payment: '現金' });
+    bindForm('add');
+    refresh();
+  }).catch(fail);
+
+  function showTab(name) {
+    ['home', 'add', 'list', 'link'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+    if (name === 'list') loadList();
+    window.scrollTo(0, 0);
+  }
+
+  function shiftMonth(delta) {
+    const [y, m] = currentYm.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    currentYm = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    refresh();
+  }
+
+  function refresh() {
+    const [y, m] = currentYm.split('-');
+    $('monthLabel').textContent = `${y}年${Number(m)}月`;
+    call('getDashboard', currentYm).then(renderDashboard).catch(fail);
+    if (!$('tab-list').classList.contains('hidden')) loadList();
+  }
+
+  // ---------- ホーム ----------
+  function renderDashboard(d) {
+    $('sumExpense').textContent = yen(d.expense);
+    $('sumIncome').textContent = yen(d.income);
+    const bal = d.income - d.expense;
+    $('sumBalance').textContent = '収支 ' + (bal >= 0 ? '+' : '−') + yen(Math.abs(bal));
+    const rows = (list, total) => list.length
+      ? list.map(c => `<tr><td>${esc(c.name)}</td><td class="num">${yen(c.amount)}</td><td class="pct">${total ? Math.round(c.amount / total * 100) : 0}%</td></tr>`).join('')
+      : '<tr><td class="muted">まだ記録がありません</td></tr>';
+    $('byCategory').innerHTML = rows(d.byCategory, d.expense);
+    $('byPayment').innerHTML = rows(d.byPayment, d.expense);
+    d.recent.forEach(t => txCache[t.id] = t);
+    $('recent').innerHTML = d.recent.length ? d.recent.map(txRowHtml).join('') : '<p class="muted">レシートを撮るか、手入力で記録してみましょう。</p>';
+  }
+
+  function txRowHtml(t) {
+    const cls = t.type === '収入' ? 'inc' : '';
+    const sign = t.type === '収入' ? '+' : '';
+    return `<div class="tx" onclick="openEdit('${esc(t.id)}')">
+      <div class="l"><b>${esc(t.store || t.category)}</b><small>${esc(t.date.slice(5).replace('-', '/'))}・${esc(t.category)}・${esc(t.payment)}${t.receipt ? '・🧾' : ''}</small></div>
+      <div class="r ${cls}">${sign}${yen(t.amount)}</div></div>`;
+  }
+
+  // ---------- 履歴 ----------
+  function loadList() {
+    $('list').innerHTML = '<p class="muted">読み込み中…</p>';
+    call('listTransactions', currentYm).then(list => {
+      list.forEach(t => txCache[t.id] = t);
+      if (!list.length) { $('list').innerHTML = '<p class="muted">この月の記録はありません</p>'; return; }
+      let html = '', last = '';
+      list.forEach(t => {
+        if (t.date !== last) { html += `<p class="date-head">${esc(t.date.replace(/-/g, '/'))}</p>`; last = t.date; }
+        html += txRowHtml(t);
+      });
+      $('list').innerHTML = html;
+    }).catch(fail);
+  }
+
+  // ---------- 入力フォーム（手入力・編集・読み取り結果の確認で共通） ----------
+  function txFormHtml(p, t) {
+    const cats = t.type === '収入' ? INIT.categories.income : INIT.categories.expense;
+    return `
+      <div class="seg" id="${p}-type">
+        <button type="button" class="${t.type !== '収入' ? 'on' : ''}" data-v="支出">支出</button>
+        <button type="button" class="${t.type === '収入' ? 'on' : ''}" data-v="収入">収入</button>
+      </div>
+      <label>金額</label>
+      <input id="${p}-amount" type="number" inputmode="numeric" placeholder="0" value="${esc(t.amount || '')}">
+      <label>勘定科目</label>
+      <div class="chips" id="${p}-cat">${cats.map(c => `<button type="button" class="chip ${c === t.category ? 'on' : ''}" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+      <div class="row2">
+        <div><label>日付</label><input id="${p}-date" type="date" value="${esc(t.date || INIT.today)}"></div>
+        <div><label>支払方法</label><select id="${p}-payment">${INIT.payments.map(x => `<option ${x === t.payment ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
+      </div>
+      <label>店舗・内容</label>
+      <input id="${p}-store" value="${esc(t.store || '')}" placeholder="例：スーパー〇〇">
+      <label>メモ</label>
+      <input id="${p}-memo" value="${esc(t.memo || '')}">`;
+  }
+
+  function bindForm(p) {
+    const seg = $(p + '-type');
+    seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+      if (b.classList.contains('on')) return;
+      const cur = readForm(p);
+      cur.type = b.dataset.v; cur.category = '';
+      seg.parentElement.innerHTML = txFormHtml(p, cur);
+      bindForm(p);
+    });
+    $(p + '-cat').querySelectorAll('.chip').forEach(c => c.onclick = () => {
+      $(p + '-cat').querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+      c.classList.add('on');
+    });
+  }
+
+  function readForm(p) {
+    const cat = $(p + '-cat').querySelector('.chip.on');
+    return {
+      type: $(p + '-type').querySelector('.on').dataset.v,
+      amount: Number($(p + '-amount').value || 0),
+      category: cat ? cat.dataset.v : '',
+      date: $(p + '-date').value,
+      payment: $(p + '-payment').value,
+      store: $(p + '-store').value.trim(),
+      memo: $(p + '-memo').value.trim(),
+    };
+  }
+
+  function validate(t) {
+    if (!t.amount || t.amount <= 0) { toast('金額を入力してください'); return false; }
+    if (!t.category) { toast('勘定科目を選んでください'); return false; }
+    return true;
+  }
+
+  function saveManual() {
+    const t = readForm('add');
+    if (!validate(t)) return;
+    $('addSave').disabled = true;
+    call('saveTransactions', [t], '手動').then(() => {
+      toast('記録しました');
+      $('addForm').innerHTML = txFormHtml('add', { date: t.date, type: t.type, payment: t.payment });
+      bindForm('add');
+      if (t.date.slice(0, 7) !== currentYm) currentYm = t.date.slice(0, 7);
+      refresh();
+    }).catch(fail).finally(() => $('addSave').disabled = false);
+  }
+
+  // ---------- 編集 ----------
+  function openEdit(id) {
+    const t = txCache[id];
+    if (!t) return;
+    $('modalBody').innerHTML = `<h3>記録を編集</h3><div>${txFormHtml('edit', t)}</div>
+      <p class="muted">入力元: ${esc(t.source)}${t.receipt ? `・<a href="${esc(t.receipt)}" target="_blank">レシート画像を見る</a>` : ''}</p>
+      <button class="btn" onclick="saveEdit('${esc(id)}')">保存</button>
+      <button class="btn danger" onclick="removeTx('${esc(id)}')">削除</button>
+      <button class="btn ghost" onclick="closeModal()">閉じる</button>`;
+    $('modal').classList.remove('hidden');
+    bindForm('edit');
+  }
+  function saveEdit(id) {
+    const t = Object.assign(readForm('edit'), { id });
+    if (!validate(t)) return;
+    loading(true, '保存中…');
+    call('updateTransaction', t).then(() => { loading(false); closeModal(); toast('保存しました'); refresh(); }).catch(fail);
+  }
+  function removeTx(id) {
+    if (!confirm('この記録を削除しますか？')) return;
+    loading(true, '削除中…');
+    call('deleteTransaction', id).then(() => { loading(false); closeModal(); toast('削除しました'); refresh(); }).catch(fail);
+  }
+  function closeModal() { $('modal').classList.add('hidden'); }
+
+  // ---------- レシート・スクショ ----------
+  function pickImage(kind) {
+    imageKind = kind;
+    (kind === 'receipt' ? $('imgCamera') : $('imgPick')).click();
+  }
+
+  // スマホの写真は大きいので、送る前に縮小（通信量とAPI料金の節約）
+  function resizeImage(file, maxSide) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(img.src);
+        resolve(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+      };
+      img.onerror = () => reject(new Error('画像を読み込めませんでした'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function onImages(input) {
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length) return;
+    const kind = imageKind;
+    const results = [];
+    try {
+      for (let i = 0; i < files.length; i++) {
+        loading(true, `読み取り中… (${i + 1}/${files.length})`);
+        const base64 = await resizeImage(files[i], kind === 'screenshot' ? 2000 : 1600);
+        results.push(await call('processImage', { base64, mimeType: 'image/jpeg', kind }));
+      }
+    } catch (e) { return fail(e); }
+    loading(false);
+    showCandidates(results);
+  }
+
+  let CANDS = [];
+  function showCandidates(results) {
+    CANDS = [];
+    const errors = [];
+    results.forEach(r => {
+      if (r.error) errors.push(r.error);
+      r.transactions.forEach(t => CANDS.push(Object.assign({ receipt: r.fileUrl, source: r.kind }, t)));
+      if (!r.transactions.length && r.kind === 'レシート') {
+        CANDS.push({ receipt: r.fileUrl, source: 'レシート', date: INIT.today, type: '支出', payment: '現金' });
+      }
+    });
+    let html = `<h3>読み取り結果を確認</h3>`;
+    if (errors.length) html += `<div class="notice warn">${esc(errors[0])}<br>画像はドライブに保存済みです。内容を入力して保存できます。</div>`;
+    else if (!CANDS.length) html += `<div class="notice">取引が見つかりませんでした（チャージなどは除外されます）。</div>`;
+    else html += `<p class="muted">間違いがあれば直して「すべて保存」を押してください。</p>`;
+    html += CANDS.map((t, i) => `<div class="cand" id="cand-${i}">
+        <div class="cand-head"><small class="muted">${i + 1}件目 ${t.receipt ? `・<a href="${esc(t.receipt)}" target="_blank">画像</a>` : ''}</small>
+        <button onclick="dropCand(${i})">除外</button></div>
+        <div>${txFormHtml('c' + i, t)}</div></div>`).join('');
+    if (CANDS.length) html += `<button class="btn" id="candSave" onclick="saveCandidates()">すべて保存（${CANDS.length}件）</button>`;
+    html += `<button class="btn ghost" onclick="closeModal()">閉じる</button>`;
+    $('modalBody').innerHTML = html;
+    CANDS.forEach((_, i) => bindForm('c' + i));
+    $('modal').classList.remove('hidden');
+  }
+  function dropCand(i) {
+    CANDS[i] = null;
+    $('cand-' + i).remove();
+    const n = CANDS.filter(Boolean).length;
+    if ($('candSave')) $('candSave').textContent = `すべて保存（${n}件）`;
+  }
+  async function saveCandidates() {
+    const groups = {};
+    for (let i = 0; i < CANDS.length; i++) {
+      if (!CANDS[i]) continue;
+      const t = Object.assign(readForm('c' + i), { receipt: CANDS[i].receipt });
+      if (!validate(t)) { $('cand-' + i).scrollIntoView({ behavior: 'smooth' }); return; }
+      (groups[CANDS[i].source] = groups[CANDS[i].source] || []).push(t);
+    }
+    loading(true, '保存中…');
+    try {
+      let added = 0, merged = 0, skipped = 0;
+      for (const src of Object.keys(groups)) {
+        const r = await call('saveTransactions', groups[src], src);
+        added += r.added; merged += r.merged; skipped += r.skipped;
+      }
+      loading(false); closeModal();
+      toast(resultText({ added, merged, skipped }));
+      refresh();
+    } catch (e) { fail(e); }
+  }
+
+  function resultText(r) {
+    let s = `${r.added}件 登録しました`;
+    if (r.merged) s += `／${r.merged}件はカード明細にレシートを紐づけ`;
+    if (r.skipped) s += `／重複${r.skipped}件はスキップ`;
+    return s;
+  }
+
+  // ---------- Gmail・CSV ----------
+  function runGmail() {
+    loading(true, 'Gmail から取り込み中…');
+    call('runGmailImport').then(r => {
+      loading(false);
+      toast(r.mails ? `メール${r.mails}通を確認: ` + resultText(r) : '新しい利用通知メールはありませんでした（連携設定で有効にしているか確認してください）');
+      $('lastGmail').textContent = '最終取込: ' + new Date().toLocaleString('ja-JP');
+      refresh();
+    }).catch(fail);
+  }
+
+  function onCsv(input) {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      // 日本のカード会社のCSVは Shift_JIS が多いので、UTF-8 で読めなければ Shift_JIS で読み直す
+      let text;
+      try { text = new TextDecoder('utf-8', { fatal: true }).decode(reader.result); }
+      catch (e) { text = new TextDecoder('shift_jis').decode(reader.result); }
+      loading(true, 'CSVを取り込み中…（件数が多いと1〜2分かかります）');
+      call('importCsv', { text, sourceName: $('csvName').value.trim() || file.name, payment: $('csvPayment').value })
+        .then(r => { loading(false); toast(resultText(r)); refresh(); })
+        .catch(fail);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+</script>
+</body>
+</html>
